@@ -4,6 +4,7 @@
 #include <string.h>
 #include <kernel.h>
 #include <sifrpc.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #include "../sd2psxman_common.h"

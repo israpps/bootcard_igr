@@ -2,6 +2,7 @@
 #define SD2PSXMAN_COMMON_H
 
 #include <tamtypes.h>
+#include <stdint.h>
 
 #define SD2PSXMAN_IRX 0xB0355 // 'S' + 'S' + '2' + 'P' + 'S' + 'X' + 'M' + 'A' + 'N' + 0xB00B5
 

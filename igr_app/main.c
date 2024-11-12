@@ -34,11 +34,12 @@
     printf((f_), ##__VA_ARGS__); \
     scr_printf("    ");          \
     scr_printf((f_), ##__VA_ARGS__);
+#define GS_BGCOLOUR(x) *((volatile unsigned long int *)0x120000E0) = x
 
-IRX_DEFINE(mcman);
+#define MOD_ERR(ID, RET) (ID < 0 || RET == 1)
+
 IRX_DEFINE(sd2psxman);
-IRX_DEFINE(sio2man);
-IRX_DEFINE(padman);
+
 
 // not vsynced, but somewhere in the ballpack
 // of 60fps
@@ -48,6 +49,13 @@ void DelayFrame()
     tv.tv_sec = 0;
     tv.tv_nsec = 16000000;
     nanosleep(&tv, NULL);
+}
+
+void err(const char* mod, int id, int ret) {
+    scr_setfontcolor(0x0000DD);
+    xprintf("\n\n\tERROR ON MODULE %s: id:%d ret:%d", mod, id, ret);
+    sleep(20);
+    GotoOSDSYS();
 }
 
 void MountBootCard(void)
@@ -60,7 +68,7 @@ void MountBootCard(void)
 
         // 30's enough, but might as well give the
         // card a chance to breathe, flush, etc
-        for (int i = 0; i < 60; i++)
+        for (int i = 0; i < 120; i++)
         {
             DelayFrame();
         }
@@ -100,7 +108,7 @@ void LittleWait()
 
 int main()
 {
-
+    int id, ret;
     ResetIOP();
     FlushCache(0);
     FlushCache(2);
@@ -109,25 +117,21 @@ int main()
 
     xprintf("Loading...\n");
 
-    // xprintf("Loading sio2man...\n");
-    IRX_LOAD(sio2man);
+    // El_isra: I would be against using ROM0 modules. but since we just wanna send cmds it should b ok
+    ret = SifLoadStartModule("rom0:SIO2MAN", 0, NULL, &id);
     LittleWait();
-
-    // xprintf("Loading sd2psxman...\n");
-    IRX_LOAD(sd2psxman);
+    if (MOD_ERR(id, ret)) err("rom0:SIO2MAN", id, ret);
+    
+    ret = SifExecModuleBuffer(sd2psxman_irx, size_sd2psxman_irx, 0, NULL, &id);
     LittleWait();
-
-    // xprintf("Loading padman...\n");
-    // IRX_LOAD(padman);
-    // LittleWait();
-
-    // xprintf("Init sd2psxman...\n");
+    if (MOD_ERR(id, ret)) err("SD2PSXMAN", id, ret);
+    
     sd2psxman_init();
     LittleWait();
-
-    // xprintf("Loading mcman\n");
-    IRX_LOAD(mcman);
+    
+    ret = SifLoadStartModule("rom0:MCMAN", 0, NULL, &id);
     LittleWait();
+    if (MOD_ERR(id, ret)) err("rom0:MCMAN", id, ret);
 
     xprintf("Mounting boot card...\n");
     MountBootCard();
@@ -137,3 +141,12 @@ int main()
 
     return 0;
 }
+
+
+void _libcglue_timezone_update()
+{
+}
+
+DISABLE_PATCHED_FUNCTIONS();
+
+PS2_DISABLE_AUTOSTART_PTHREAD();
